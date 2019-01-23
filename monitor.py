@@ -4,11 +4,14 @@ import functional_expression as FE
 
 import test_cases
 
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Optional
 
 class Monitor:
-    def __init__(self, formula: F.Formula):
+    def __init__(self,
+                 formula: F.Formula,
+                 debug_mode: Optional[bool] = False):
         self.formula = formula
+        self.debug_mode = debug_mode
         self._reset()
 
     def _reset(self):
@@ -232,6 +235,8 @@ class Monitor:
             self.current[k] = self.progress(k, delta_t, character)
 
     def _debug(self):
+        if not self.debug_mode:
+            return
 
         print("Timestamp/Offset: {}/{}".format(self.current_timestamp, self.current_timestamp_offset))
         print("Character: {}".format(self.current_character))
@@ -263,20 +268,50 @@ class Monitor:
             self.step(timestamp, char)
 
         self._debug()
-        return True
+        return self._backtrack_for_final_solution()
 
+    def _backtrack_for_final_solution(self):
+        """
+        Check validity of the formula that is being monitored.
+        """
+
+        # probably unnecessary simplification of boolean expression for the final formula
+        expression = self.previous[-1].simplify()
+
+        # while the boolean expression is pointing at a sub-formula, access it
+        # again probably unnecessary simplification of boolean expression
+        while isinstance(expression, BE.VarExpression) or isinstance(expression, BE.NegVarExpression):
+            expression = self.previous[expression.var].simplify()
+
+        # final case reached: output a boolean
+        if isinstance(expression, BE.TrueBooleanExpression):
+            out = True
+        elif isinstance(expression, BE.FalseBooleanExpression):
+            out = False
+        else:
+            # we have a conjunction or disjunction at the end. but it did not get resolved.
+            print("Error in back-tracking for final solution. Returning False.")
+            out = False
+
+        return out
 
 def main():
-    pattern = [(1, 'a'), (2,'a'), (2,'a'), (3,'b')]
+    pattern = test_cases.pattern_aaabb()
+    formula = test_cases.conjunction()
 
-    print("Running UNTIL test")
-    monitor = Monitor(test_cases.until())
-    monitor.run(pattern)
+    print("Running OR test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=True)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
-    return
-    print("Running SINCE test")
-    monitor = Monitor(test_cases.since())
-    monitor.run(pattern)
+    formula = test_cases.until()
+    print("Running UNTIL test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=True)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+
+    formula = test_cases.since()
+    print("Running SINCE test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=True)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
 if __name__ == '__main__':
     main()

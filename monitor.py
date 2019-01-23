@@ -96,14 +96,16 @@ class Monitor:
                                                       formula_2=self.substitute_functional_expression(self.current[self.get_formula_index(expr.formula_2)]))
 
 
-    def filter_verdicts(self, history):
+    def filter_verdicts(self, history: Set[Tuple[Tuple[int, int], BE.BooleanExpression]]) -> Set[Tuple[Tuple[int, int], BE.BooleanExpression]]:
         """
         In-place removal of verdicts which are either
         1. evaluated to true or false expressions or
         2. have an equivalent boolean expression to other elements in the history
         """
-        self._filter_true_or_false_verdicts(history)
+        formula_verdicts = self._filter_true_or_false_verdicts(history)
         self._filter_equivalent_verdicts(history)
+
+        return formula_verdicts
 
     def _filter_equivalent_verdicts(self, history: Set[Tuple[Tuple[int, int], BE.BooleanExpression]]):
         """
@@ -138,6 +140,8 @@ class Monitor:
                 elements_to_remove.add(entry)
         for entry in elements_to_remove:
             history.remove(entry)
+
+        return elements_to_remove
 
     def eval(self, f_expr: FE.FunctionalExpression, delta_t: int) -> BE.BooleanExpression:
         out = None
@@ -203,16 +207,16 @@ class Monitor:
                                                                                                 formula_2=self.substitute_functional_expression(self.previous[formula_idx - delta_t]))
                                                       )
         elif isinstance(formula, F.Until):
-            return FE.ConjunctionFunctionalExpression(formula_1=FE.NowFormulaExpression(BE.FalseBooleanExpression())
+            return FE.ConjunctionFunctionalExpression(formula_1=self.current[self.get_formula_index(formula.formula2)]
                                                         if formula.interval.begin == 0
-                                                        else self.current[self.get_formula_index(formula.formula2)],
+                                                        else FE.NowFormulaExpression(BE.FalseBooleanExpression()),
                                                       formula_2=FE.LaterFormulaExpression(lambda x: BE.DisjunctionBooleanExpression(formula_1=self.eval(self.current[self.get_formula_index(formula.formula1)], x),
                                                                                                                                     formula_2=BE.VarExpression(formula_idx - x)
                                                                                                                                     if formula.interval.is_in_interval(x) else BE.FalseBooleanExpression())
                                                                                           )
                                                       )
 
-    def step(self, timestamp: int, character: str):
+    def step(self, timestamp: int, character: str) -> Set[Tuple[Tuple[int, int], BE.BooleanExpression]]:
         delta_t = timestamp - self.current_timestamp
         for k in range(self.N):
             self.previous[k] = self.eval(self.current[k], delta_t)
@@ -221,7 +225,7 @@ class Monitor:
         filtering_input.add(((self.current_timestamp, self.current_timestamp_offset), self.previous[-1]))
         for time_info, c in self.history:
             filtering_input.add((time_info, self.substitute_boolean_expression(c)))
-        self.filter_verdicts(filtering_input)
+        formula_verdicts = self.filter_verdicts(filtering_input)
         self.history = filtering_input
 
         self.current_timestamp = timestamp
@@ -233,6 +237,8 @@ class Monitor:
 
         for k in range(self.N):
             self.current[k] = self.progress(k, delta_t, character)
+
+        return formula_verdicts
 
     def _debug(self):
         if not self.debug_mode:
@@ -265,7 +271,10 @@ class Monitor:
 
         for timestamp, char in pattern:
             self._debug()
-            self.step(timestamp, char)
+            formula_verdicts = self.step(timestamp, char)
+
+            for ((timestamp, offset), b_expr) in formula_verdicts:
+                print("Verdict at timestamp {}: {}".format(timestamp, b_expr))
 
         self._debug()
         return self._backtrack_for_final_solution()
@@ -299,19 +308,19 @@ def main():
     pattern = test_cases.pattern_aaabb()
     formula = test_cases.conjunction()
 
-    print("Running OR test on formula ({}) and pattern {} ".format(formula, pattern))
-    monitor = Monitor(formula, debug_mode=True)
-    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+    #print("Running OR test on formula ({}) and pattern {} ".format(formula, pattern))
+    #monitor = Monitor(formula, debug_mode=True)
+    #print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
     formula = test_cases.until()
     print("Running UNTIL test on formula ({}) and pattern {} ".format(formula, pattern))
     monitor = Monitor(formula, debug_mode=True)
     print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
-    formula = test_cases.since()
-    print("Running SINCE test on formula ({}) and pattern {} ".format(formula, pattern))
-    monitor = Monitor(formula, debug_mode=True)
-    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+    #formula = test_cases.since()
+    #print("Running SINCE test on formula ({}) and pattern {} ".format(formula, pattern))
+    #monitor = Monitor(formula, debug_mode=True)
+    #print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
 if __name__ == '__main__':
     main()

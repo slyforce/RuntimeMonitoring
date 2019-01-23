@@ -2,6 +2,8 @@ import formula as F
 import boolean_expression as BE
 import functional_expression as FE
 
+import test_cases
+
 from typing import List, Tuple, Set
 
 class Monitor:
@@ -16,6 +18,7 @@ class Monitor:
         self.previous = []
         self.current_timestamp = -1
         self.current_timestamp_offset = 0
+        self.current_character = ''
         self._create_arrays()
 
     def _create_arrays(self):
@@ -56,22 +59,23 @@ class Monitor:
             self._create_array_recursion_helper(formula.formula1)
             self._create_array_recursion_helper(formula.formula2)
 
-
-
     def substitute_boolean_expression(self, expr: BE.BooleanExpression) -> BE.BooleanExpression:
+        out = None
         if isinstance(expr, BE.FalseBooleanExpression) or isinstance(expr, BE.TrueBooleanExpression):
-            return expr
+            out = expr
         elif isinstance(expr, BE.VarExpression):
-            return self.previous[expr.var]
+            out = self.previous[expr.var]
         elif isinstance(expr, BE.NegVarExpression):
-            return BE.NegationBooleanExpression(self.previous[expr.var])
+            out = BE.NegationBooleanExpression(self.previous[expr.var])
         elif isinstance(expr, BE.DisjunctionBooleanExpression):
-            return BE.DisjunctionBooleanExpression(formula_1=self.substitute_boolean_expression(expr.formula_1),
-                                                   formula_2=self.substitute_boolean_expression(expr.formula_2))
+            out = BE.DisjunctionBooleanExpression(formula_1=self.substitute_boolean_expression(expr.formula_1),
+                                                  formula_2=self.substitute_boolean_expression(expr.formula_2))
 
         elif isinstance(expr, BE.ConjunctionBooleanExpression):
-            return BE.ConjunctionBooleanExpression(formula_1=self.substitute_boolean_expression(expr.formula_1),
-                                                   formula_2=self.substitute_boolean_expression(expr.formula_2))
+            out = BE.ConjunctionBooleanExpression(formula_1=self.substitute_boolean_expression(expr.formula_1),
+                                                  formula_2=self.substitute_boolean_expression(expr.formula_2))
+
+        return out.simplify()
 
     def substitute_functional_expression(self, expr: BE.BooleanExpression) -> FE.FunctionalExpression:
         if isinstance(expr, BE.FalseBooleanExpression) or isinstance(expr, BE.TrueBooleanExpression):
@@ -81,12 +85,12 @@ class Monitor:
         elif isinstance(expr, BE.NegVarExpression):
             return FE.NegFunctionalExpression(formula=self.current[expr.var])
         elif isinstance(expr, BE.DisjunctionBooleanExpression):
-            return FE.DisjunctionFunctionalExpression(formula_1=self.substitute_functional_expression(self.get_formula_index(self.current, expr.formula_1)),
-                                                      formula_2=self.substitute_functional_expression(self.get_formula_index(self.current, expr.formula_2)))
+            return FE.DisjunctionFunctionalExpression(formula_1=self.substitute_functional_expression(self.current[self.get_formula_index(expr.formula_1)]),
+                                                      formula_2=self.substitute_functional_expression(self.current[self.get_formula_index(expr.formula_2)]))
 
         elif isinstance(expr, BE.ConjunctionBooleanExpression):
-            return FE.ConjunctionFunctionalExpression(formula_1=self.substitute_functional_expression(self.get_formula_index(self.current, expr.formula_1)),
-                                                      formula_2=self.substitute_functional_expression(self.get_formula_index(self.current, expr.formula_2)))
+            return FE.ConjunctionFunctionalExpression(formula_1=self.substitute_functional_expression(self.current[self.get_formula_index(expr.formula_1)]),
+                                                      formula_2=self.substitute_functional_expression(self.current[self.get_formula_index(expr.formula_2)]))
 
 
     def filter_verdicts(self, history):
@@ -192,7 +196,7 @@ class Monitor:
                                                         else self.current[self.get_formula_index(formula.formula2)],
                                                       formula_2=FE.NowFormulaExpression(BE.FalseBooleanExpression())
                                                         if delta_t <= formula.interval.end
-                                                        else FE.ConjunctionFunctionalExpression(formula_1=self.current[self.current.index(formula.formula1)],
+                                                        else FE.ConjunctionFunctionalExpression(formula_1=self.current[self.get_formula_index(formula.formula1)],
                                                                                                 formula_2=self.substitute_functional_expression(self.previous[formula_idx - delta_t]))
                                                       )
         elif isinstance(formula, F.Until):
@@ -218,6 +222,7 @@ class Monitor:
         self.history = filtering_input
 
         self.current_timestamp = timestamp
+        self.current_character = character
         if delta_t > 0:
             self.current_timestamp_offset = 0
         else:
@@ -229,6 +234,7 @@ class Monitor:
     def _debug(self):
 
         print("Timestamp/Offset: {}/{}".format(self.current_timestamp, self.current_timestamp_offset))
+        print("Character: {}".format(self.current_character))
 
         print("History:")
         for entry in self.history:
@@ -249,7 +255,6 @@ class Monitor:
 
         print("")
 
-
     def run(self, pattern: List[Tuple[int, str]]) -> bool:
         self._reset()
 
@@ -260,12 +265,17 @@ class Monitor:
         self._debug()
         return True
 
+
 def main():
     pattern = [(1, 'a'), (2,'a'), (2,'a'), (3,'b')]
-    formula = F.Until(formula1=F.Proposition(character='a'),
-                      formula2=F.Proposition(character='b'),
-                      interval=F.Interval(0, 1))
-    monitor = Monitor(formula)
+
+    print("Running UNTIL test")
+    monitor = Monitor(test_cases.until())
+    monitor.run(pattern)
+
+    return
+    print("Running SINCE test")
+    monitor = Monitor(test_cases.since())
     monitor.run(pattern)
 
 if __name__ == '__main__':

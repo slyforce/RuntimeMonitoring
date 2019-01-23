@@ -1,5 +1,6 @@
 import formula as F
 
+
 def pattern_aaabb():
     return [(1, 'a'), (2,'a'), (2,'a'), (3,'b'), (4, 'b')]
 
@@ -19,3 +20,13 @@ def since():
     return F.Since(formula1=F.Proposition(character='a'),
                    formula2=F.Proposition(character='b'),
                    interval=F.Interval(0, 1))
+
+
+def next():
+    return F.Next(formula=F.Proposition(character='a'),
+                  interval=F.Interval(0, 1))
+
+
+def previous():
+    return F.Previous(formula=F.Proposition(character='a'),
+                      interval=F.Interval(0, 1))

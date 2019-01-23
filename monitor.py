@@ -308,19 +308,29 @@ def main():
     pattern = test_cases.pattern_aaabb()
     formula = test_cases.conjunction()
 
-    #print("Running OR test on formula ({}) and pattern {} ".format(formula, pattern))
-    #monitor = Monitor(formula, debug_mode=True)
-    #print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+    print("Running OR test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=False)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
     formula = test_cases.until()
     print("Running UNTIL test on formula ({}) and pattern {} ".format(formula, pattern))
     monitor = Monitor(formula, debug_mode=True)
     print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
-    #formula = test_cases.since()
-    #print("Running SINCE test on formula ({}) and pattern {} ".format(formula, pattern))
-    #monitor = Monitor(formula, debug_mode=True)
-    #print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+    formula = test_cases.since()
+    print("Running SINCE test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=False)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+
+    formula = test_cases.next()
+    print("Running NEXT test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=False)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
+    
+    formula = test_cases.previous()
+    print("Running PREVIOUS test on formula ({}) and pattern {} ".format(formula, pattern))
+    monitor = Monitor(formula, debug_mode=False)
+    print("Trace satisfies formula: {}\n".format(monitor.run(pattern)))
 
 if __name__ == '__main__':
     main()
